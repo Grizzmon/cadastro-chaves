@@ -36,6 +36,8 @@ form.addEventListener("submit",e=>{
   data[k]=String(data[k]||"").trim().replace(/\s+/g," ");
   if(data[k].length<2||data[k].length>80){msg.textContent="Preencha corretamente os três nomes.";return}
  }
+ const nomes=[data.primeiro_nome,data.segundo_nome,data.sobrenome].join(" ").split(/\s+/).filter(Boolean);
+ if(nomes.length>4){msg.textContent="São permitidos no máximo 4 nomes no total. Retire os nomes a mais.";return}
  pending=data;
  $("#nome-revisao").textContent=[data.primeiro_nome,data.segundo_nome,data.sobrenome].join(" ");
  mostrar(review);$("#confirmar").focus();
@@ -48,6 +50,7 @@ $("#confirmar").addEventListener("click",async()=>{
  try{
   const {error}=await db.from("nome_submissoes").insert({...data,dispositivo_token:deviceToken});
   if(error){
+   if(error.code==="23514"){esconder(review);msg.textContent="São permitidos no máximo 4 nomes no total.";return}
    if(error.code==="23505"){writeLocal(SENT_KEY,"1");pending=null;esconder(review);bloquearFormulario();return}
    throw error;
   }
