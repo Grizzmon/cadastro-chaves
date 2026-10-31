@@ -2,6 +2,17 @@ import {db,configured} from "./supabase-client.js";
 const $=s=>document.querySelector(s);
 const form=$("#cadastro"),msg=$("#mensagem"),btn=$("#enviar"),review=$("#revisao"),success=$("#confirmacao");
 let pending=null;
+const STORAGE_KEY="cadastro_chave_dispositivo_v1";
+const SENT_KEY="cadastro_chave_enviado_v1";
+function readLocal(key){try{return localStorage.getItem(key)}catch{return null}}
+function writeLocal(key,value){try{localStorage.setItem(key,value)}catch{}}
+let deviceToken=readLocal(STORAGE_KEY);
+if(!deviceToken){deviceToken=crypto.randomUUID();writeLocal(STORAGE_KEY,deviceToken)}
+function bloquearFormulario(){
+ form.classList.add("hidden");
+ $("#ja-enviado").classList.remove("hidden");
+}
+if(readLocal(SENT_KEY)==="1")bloquearFormulario();
 async function atualizarContador(){
  if(!configured)return;
  const {data,error}=await db.rpc("total_cadastros");
@@ -17,7 +28,7 @@ $("#corrigir").addEventListener("click",corrigir);
 $("#fechar-confirmacao").addEventListener("click",()=>{esconder(success);btn.focus()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!review.classList.contains("hidden"))corrigir();else if(e.key==="Escape"&&!success.classList.contains("hidden")){esconder(success);btn.focus()}});
 form.addEventListener("submit",e=>{
- e.preventDefault();msg.textContent="";
+ e.preventDefault();msg.textContent="";\n if(readLocal(SENT_KEY)==="1"){bloquearFormulario();return}
  if(!configured){msg.textContent="O site ainda está em configuração.";return}
  const data=Object.fromEntries(new FormData(form));
  for(const k of ["primeiro_nome","segundo_nome","sobrenome"]){
@@ -34,7 +45,7 @@ $("#confirmar").addEventListener("click",async()=>{
  const confirmar=$("#confirmar");
  confirmar.disabled=true;$("#corrigir").disabled=true;confirmar.textContent="A enviar...";
  try{
-  const {error}=await db.from("nome_submissoes").insert(data);
+  const {error}=await db.from("nome_submissoes").insert({...data,dispositivo_token:deviceToken});
   if(error)throw error;
   pending=null;form.reset();esconder(review);mostrar(success);$("#fechar-confirmacao").focus();
   atualizarContador();
