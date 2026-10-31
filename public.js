@@ -25,10 +25,11 @@ function esconder(el){el.classList.add("hidden");if(review.classList.contains("h
 function mostrar(el){el.classList.remove("hidden");document.body.classList.add("modal-open")}
 function corrigir(){pending=null;esconder(review);btn.focus()}
 $("#corrigir").addEventListener("click",corrigir);
-$("#fechar-confirmacao").addEventListener("click",()=>{esconder(success);btn.focus()});
+$("#fechar-confirmacao").addEventListener("click",()=>{esconder(success);if(!form.classList.contains("hidden"))btn.focus()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!review.classList.contains("hidden"))corrigir();else if(e.key==="Escape"&&!success.classList.contains("hidden")){esconder(success);btn.focus()}});
 form.addEventListener("submit",e=>{
- e.preventDefault();msg.textContent="";\n if(readLocal(SENT_KEY)==="1"){bloquearFormulario();return}
+ e.preventDefault();msg.textContent="";
+ if(readLocal(SENT_KEY)==="1"){bloquearFormulario();return}
  if(!configured){msg.textContent="O site ainda está em configuração.";return}
  const data=Object.fromEntries(new FormData(form));
  for(const k of ["primeiro_nome","segundo_nome","sobrenome"]){
@@ -46,7 +47,12 @@ $("#confirmar").addEventListener("click",async()=>{
  confirmar.disabled=true;$("#corrigir").disabled=true;confirmar.textContent="A enviar...";
  try{
   const {error}=await db.from("nome_submissoes").insert({...data,dispositivo_token:deviceToken});
-  if(error)throw error;
+  if(error){
+   if(error.code==="23505"){writeLocal(SENT_KEY,"1");pending=null;esconder(review);bloquearFormulario();return}
+   throw error;
+  }
+  writeLocal(SENT_KEY,"1");
+  bloquearFormulario();
   pending=null;form.reset();esconder(review);mostrar(success);$("#fechar-confirmacao").focus();
   atualizarContador();
  }catch(err){console.error(err);esconder(review);msg.textContent="Não foi possível enviar. Tente novamente."}
